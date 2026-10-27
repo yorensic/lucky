@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频加载中…</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: #05060a;
+    color: #dfe7f5;
+    font-family: "Microsoft YaHei", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ================= 第一幕：伪加载 ================= */
+  #loader {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    background: #05060a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .loader-box { text-align: center; width: 280px; }
+
+  .loading-text {
+    font-size: 14px;
+    color: #6f8099;
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+  }
+
+  .bar-bg {
+    height: 4px;
+    background: #1a2235;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  #progressBar {
+    height: 100%;
+    width: 0%;
+    background: #3b82f6;
+    transition: width 0.1s;
+  }
+
+  .percent { font-size: 12px; color: #3f4d63; }
+
+  #continueBtn {
+    margin-top: 20px;
+    padding: 10px 30px;
+    background: #1e3a8a;
+    color: #fff;
+    border: 1px solid #3b82f6;
+    border-radius: 20px;
+    cursor: pointer;
+    display: none;
+    font-size: 14px;
+  }
+
+  /* ================= 第二幕：静默黑屏 ================= */
+  #silence {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 20;
+    background: #000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 14px;
+  }
+
+  /* ================= 鬼脸公共样式 ================= */
+  .face-container {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    background: #000;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .flash-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 0, 0, 0.4);
+    animation: flashAnim 0.2s infinite alternate;
+    z-index: 1;
+  }
+
+  @keyframes flashAnim {
+    from { opacity: 0.1; }
+    to { opacity: 0.8; }
+  }
+
+  .face-zoom {
+    position: relative;
+    z-index: 2;
+    width: 280px;
+    height: 360px;
+    animation: zoomAnim 0.4s ease-out forwards, shakeAnim 0.1s infinite;
+  }
+
+  @keyframes zoomAnim {
+    0% { transform: scale(0.1); opacity: 0; }
+    100% { transform: scale(1.1); opacity: 1; }
+  }
+
+  @keyframes shakeAnim {
+    0% { margin-left: -10px; margin-top: 5px; }
+    50% { margin-left: 10px; margin-top: -5px; }
+    100% { margin-left: -10px; margin-top: 5px; }
+  }
+
+  /* 脸部绘制 */
+  .face {
+    width: 100%;
+    height: 100%;
+    background: #dcd3c6;
+    border-radius: 45% 45% 40% 40% / 50% 50% 45% 45%;
+    position: relative;
+    box-shadow: inset 0 -40px 60px rgba(0,0,0,0.7), 0 0 50px red;
+    overflow: hidden;
+  }
+
+  .eye {
+    position: absolute;
+    top: 25%;
+    width: 60px;
+    height: 80px;
+    background: #0a0000;
+    border-radius: 50%;
+  }
+
+  .eye.left { left: 15%; }
+  .eye.right { right: 15%; }
+
+  .pupil {
+    position: absolute;
+    top: 20%; left: 20%;
+    width: 35px; height: 40px;
+    background: radial-gradient(circle, #ff0000 0%, #500000 70%, #000 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 15px red;
+  }
+
+  .blood {
+    position: absolute;
+    top: 80%;
+    left: 50%;
+    width: 6px;
+    height: 60px;
+    background: #a00000;
+    border-radius: 3px;
+  }
+
+  .mouth {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    margin-left: -60px;
+    width: 120px;
+    height: 80px;
+    background: #200000;
+    border-radius: 50% 50% 40% 40%;
+    box-shadow: inset 0 0 20px #000, 0 0 20px red;
+  }
+
+  /* 乱码 */
+  .glitch-text {
+    position: absolute;
+    color: #ff3333;
+    font-family: "Courier New", monospace;
+    font-size: 24px;
+    font-weight: bold;
+    z-index: 3;
+    opacity: 0;
+    animation: flicker 0.5s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  /* ================= 第三幕：中奖骗局 ================= */
+  #bait {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 40;
+    background: #1a0505;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .gift-icon { font-size: 70px; margin-bottom: 10px; }
+
+  .bait-title {
+    font-size: 24px;
+    color: #ffd700;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .bait-sub {
+    font-size: 14px;
+    color: #e7c9a0;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .prize-box {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid #ffd700;
+    border-radius: 10px;
+    padding: 15px;
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 20px;
+  }
+
+  .prize-box .name { color: #ffd700; font-size: 18px; font-weight: bold; }
+  .prize-box .desc { color: #c9a978; font-size: 12px; margin-top: 5px; }
+
+  #prizeBtn {
+    padding: 12px 40px;
+    background: #ffd700;
+    color: #4a1e00;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  }
+
+  /* ================= 第四幕：超级惊吓 (复用鬼脸结构) ================= */
+  #megaScare {
+    z-index: 50;
+  }
+
+  #megaScare .face-zoom {
+    width: 320px;
+    height: 400px;
+    animation: zoomMega 0.4s ease-out forwards, shakeAnim 0.1s infinite;
+  }
+
+  @keyframes zoomMega {
+    0% { transform: scale(0.1) rotate(-10deg); opacity: 0; }
+    100% { transform: scale(1.3) rotate(0); opacity: 1; }
+  }
+
+  .attack-text {
+    position: absolute;
+    top: 10%;
+    font-size: 40px;
+    color: #ff0000;
+    font-weight: bold;
+    text-shadow: 0 0 20px red;
+    z-index: 10;
+    display: none;
+  }
+
+  /* ================= 第五幕：彩蛋 ================= */
+  #aftermath {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    background: #05060a;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+
+  #aftermath h1 { color: #3b82f6; margin-bottom: 15px; }
+  #aftermath p { color: #8ba0c0; font-size: 14px; line-height: 1.8; margin-bottom: 20px; }
+
+  #replayBtn {
+    padding: 10px 30px;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+  <!-- 加载 -->
+  <div id="loader">
+    <div class="loader-box">
+      <div class="loading-text">正在加载视频资源</div>
+      <div class="bar-bg"><div id="progressBar"></div></div>
+      <div class="percent" id="percent">0%</div>
+      <button id="continueBtn">点击继续</button>
+    </div>
+  </div>
+
+  <!-- 静默 -->
+  <div id="silence">正在连接服务器...</div>
+
+  <!-- 第一波惊吓 -->
+  <div id="scare1" class="face-container">
+    <div class="flash-overlay"></div>
+    <div class="face-zoom">
+      <div class="face">
+        <div class="eye left"><div class="pupil"></div><div class="blood"></div></div>
+        <div class="eye right"><div class="pupil"></div><div class="blood"></div></div>
+        <div class="mouth"></div>
+      </div>
+    </div>
+    <div class="glitch-text" style="top:10%; left:10%;">别回头</div>
+    <div class="glitch-text" style="bottom:20%; right:10%; animation-delay: 0.2s;">看见你了</div>
+    <div class="glitch-text" style="top:40%; left:60%; animation-delay: 0.4s;">ERROR</div>
+  </div>
+
+  <!-- 中奖骗局 -->
+  <div id="bait">
+    <div class="gift-icon"></div>
+    <div class="bait-title">恭喜！你是幸运访客</div>
+    <div class="bait-sub">系统检测到你运气爆棚<br>获得一次神秘抽奖机会</div>
+    
+    <div class="prize-box">
+      <div class="name"> 神秘大奖 × 1</div>
+      <div class="desc">价值 ¥ 999 的惊喜礼包<br>点击下方按钮立即领取</div>
+    </div>
+    
+    <button id="prizeBtn">立即领取</button>
+  </div>
+
+  <!-- 第二波惊吓 -->
+  <div id="megaScare" class="face-container">
+    <div class="flash-overlay" style="background: rgba(255,0,0,0.7);"></div>
+    <div class="attack-text" id="attackText">抓到你了</div>
+    <div class="face-zoom">
+      <div class="face">
+        <div class="eye left"><div class="pupil"></div><div class="blood"></div></div>
+        <div class="eye right"><div class="pupil"></div><div class="blood"></div></div>
+        <div class="mouth"></div>
+      </div>
+    </div>
+    <div class="glitch-text" style="top:20%; right:15%;">跑不掉</div>
+    <div class="glitch-text" style="bottom:10%; left:20%; animation-delay: 0.3s;">HELP</div>
+  </div>
+
+  <!-- 彩蛋 -->
+  <div id="aftermath">
+    <div style="font-size: 60px; margin-bottom: 20px;"></div>
+    <h1>哈哈，吓到了吧！</h1>
+    <p>根本没有什么大奖，刚才全是恶作剧。<br>你的设备非常安全，什么都没有发生。</p>
+    <button id="replayBtn">再吓我一次</button>
+  </div>
+
+<!-- 极度精简的 JS，直接执行 -->
+<script>
+  // 获取 DOM 元素
+  var loader = document.getElementById('loader');
+  var progressBar = document.getElementById('progressBar');
+  var percent = document.getElementById('percent');
+  var continueBtn = document.getElementById('continueBtn');
+  var silence = document.getElementById('silence');
+  
+  var scare1 = document.getElementById('scare1');
+  var bait = document.getElementById('bait');
+  var prizeBtn = document.getElementById('prizeBtn');
+  
+  var megaScare = document.getElementById('megaScare');
+  var attackText = document.getElementById('attackText');
+  var aftermath = document.getElementById('aftermath');
+  var replayBtn = document.getElementById('replayBtn');
+
+  var t1, t2, t3, t4;
+
+  // 简易音效 (避免复杂的 Web Audio 导致报错)
+  function playSound(type) {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      if (type === 1) { // 第一次惊吓
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 1);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
+        osc.start();
+        osc.stop(ctx.currentTime + 1);
+      } else { // 第二次超级惊吓
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1000, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 1.5);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.5);
+      }
+    } catch(e) {}
+  }
+
+  // 1. 加载进度
+  var p = 0;
+  function startLoading() {
+    p = 0;
+    progressBar.style.width = '0%';
+    percent.innerText = '0%';
+    continueBtn.style.display = 'none';
+    loader.style.display = 'flex';
+
+    t1 = setInterval(function() {
+      p += Math.random() * 15 + 5;
+      if (p >= 99) {
+        p = 99;
+        clearInterval(t1);
+        progressBar.style.width = '99%';
+        percent.innerText = '99%';
+        
+        // 卡在99%一秒后显示按钮
+        t2 = setTimeout(function() {
+          continueBtn.style.display = 'inline-block';
+        }, 800);
+      } else {
+        progressBar.style.width = p + '%';
+        percent.innerText = Math.floor(p) + '%';
+      }
+    }, 150);
+  }
+
+  // 2. 点击继续
+  continueBtn.onclick = function() {
+    continueBtn.style.display = 'none';
+    loader.style.display = 'none';
+    
+    // 先黑屏静默
+    silence.style.display = 'flex';
+    
+    t3 = setTimeout(function() {
+      silence.style.display = 'none';
+      startScare1();
+    }, 600);
+  };
+
+  // 3. 第一波惊吓
+  function startScare1() {
+    playSound(1);
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    
+    scare1.style.display = 'flex';
+    
+    // 2.5秒后切到抽奖页面
+    t4 = setTimeout(function() {
+      scare1.style.display = 'none';
+      bait.style.display = 'flex';
+    }, 2500);
+  }
+
+  // 4. 点击抽奖，触发终极惊吓
+  prizeBtn.onclick = function() {
+    bait.style.display = 'none';
+    playSound(2);
+    if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+    
+    megaScare.style.display = 'flex';
+    
+    // 0.3秒后文字砸入
+    setTimeout(function() {
+      attackText.style.display = 'block';
+    }, 300);
+
+    // 3秒后进入彩蛋
+    setTimeout(function() {
+      megaScare.style.display = 'none';
+      aftermath.style.display = 'flex';
+    }, 3000);
+  };
+
+  // 5. 重新开始
+  replayBtn.onclick = function() {
+    clearInterval(t1);
+    clearTimeout(t2);
+    clearTimeout(t3);
+    clearTimeout(t4);
+    aftermath.style.display = 'none';
+    startLoading();
+  };
+
+  // 初始化
+  startLoading();
+</script>
+
+</body>
+</html>
